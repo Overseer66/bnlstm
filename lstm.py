@@ -45,17 +45,57 @@ class LSTMCell(RNNCell):
 
 class BNLSTMCell(RNNCell):
     '''Batch normalized LSTM as described in arxiv.org/abs/1603.09025'''
-    def __init__(self, num_units, training):
-        self.num_units = num_units
+    def __init__(self, num_units, training, forget_bias=1.0,
+               input_size=None, activation=math_ops.tanh,
+               layer_norm=True, norm_gain=1.0, norm_shift=0.0,
+               dropout_keep_prob=1.0, dropout_prob_seed=None,
+               reuse=None):
+        """Initializes the basic LSTM cell.
+        Args:
+          num_units: int, The number of units in the LSTM cell.
+          forget_bias: float, The bias added to forget gates (see above).
+          input_size: Deprecated and unused.
+          activation: Activation function of the inner states.
+          layer_norm: If `True`, layer normalization will be applied.
+          norm_gain: float, The layer normalization gain initial value. If
+            `layer_norm` has been set to `False`, this argument will be ignored.
+          norm_shift: float, The layer normalization shift initial value. If
+            `layer_norm` has been set to `False`, this argument will be ignored.
+          dropout_keep_prob: unit Tensor or float between 0 and 1 representing the
+            recurrent dropout probability value. If float and 1.0, no dropout will
+            be applied.
+          dropout_prob_seed: (optional) integer, the randomness seed.
+          reuse: (optional) Python boolean describing whether to reuse variables
+            in an existing scope.  If not `True`, and the existing scope already has
+            the given variables, an error is raised.
+        """
+
+        # 2017.08.16
+        # Customizing BNLSTMCell with python3 and tensorflow==1.1.0
+        # 1. add some parameters to init func for MultiLayerRNN
+        # 2. change parameter position adapt to tf.split
+
+        if input_size is not None:
+            logging.warn("%s: The input_size parameter is deprecated.", self)
+
         self.training = training
+        self._num_units = num_units
+        self._activation = activation
+        self._forget_bias = forget_bias
+        self._keep_prob = dropout_keep_prob
+        self._seed = dropout_prob_seed
+        self._layer_norm = layer_norm
+        self._g = norm_gain
+        self._b = norm_shift
+        self._reuse = reuse
 
     @property
     def state_size(self):
-        return (self.num_units, self.num_units)
+        return (self._num_units, self._num_units)
 
     @property
     def output_size(self):
-        return self.num_units
+        return self._num_units
 
     def __call__(self, x, state, scope=None):
         with tf.variable_scope(scope or type(self).__name__):
@@ -63,12 +103,12 @@ class BNLSTMCell(RNNCell):
 
             x_size = x.get_shape().as_list()[1]
             W_xh = tf.get_variable('W_xh',
-                [x_size, 4 * self.num_units],
+                [x_size, 4 * self._num_units],
                 initializer=orthogonal_initializer())
             W_hh = tf.get_variable('W_hh',
-                [self.num_units, 4 * self.num_units],
+                [self._num_units, 4 * self._num_units],
                 initializer=bn_lstm_identity_initializer(0.95))
-            bias = tf.get_variable('bias', [4 * self.num_units])
+            bias = tf.get_variable('bias', [4 * self._num_units])
 
             xh = tf.matmul(x, W_xh)
             hh = tf.matmul(h, W_hh)
@@ -78,7 +118,7 @@ class BNLSTMCell(RNNCell):
 
             hidden = bn_xh + bn_hh + bias
 
-            i, j, f, o = tf.split(1, 4, hidden)
+            i, j, f, o = tf.split(hidden, 4, 1)
 
             new_c = c * tf.sigmoid(f) + tf.sigmoid(i) * tf.tanh(j)
             bn_new_c = batch_norm(new_c, 'c', self.training)
