@@ -5,9 +5,13 @@ An implementation of [Recurrent Batch Normalization](https://arxiv.org/abs/1603.
 A short writeup on [Olav Nymoen's blog](http://olavnymoen.com/2016/07/07/rnn-batch-normalization)
 
 ### Requirements
-
+[old]
 - Tensorflow 0.9
 - python 2.x
+* * *
+[new]
+- Tensorflow 1.1
+- python3
 
 ### Acknowledgement
 
