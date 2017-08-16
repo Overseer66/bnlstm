@@ -6,8 +6,8 @@ A short writeup on [Olav Nymoen's blog](http://olavnymoen.com/2016/07/07/rnn-bat
 
 ### Requirements
 [old]
-- Tensorflow 0.9
-- python 2.x
+- ~~Tensorflow 0.9~~
+- ~~python 2.x~~
 * * *
 [new]
 - Tensorflow 1.1
